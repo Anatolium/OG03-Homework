@@ -2,9 +2,9 @@ import pygame
 import random
 import os
 
-WIDTH = 480
-HEIGHT = 800
-FPS = 40
+WIDTH = 500
+HEIGHT = 600
+FPS = 50
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
