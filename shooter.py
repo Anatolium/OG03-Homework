@@ -1,9 +1,9 @@
 import time
-
 import pygame
 import random
 import os
 import sys
+import datetime
 
 WIDTH = 500
 HEIGHT = 600
@@ -16,46 +16,7 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 YELLOW = (255, 255, 0)
 
-# Инициализация pygame и создание окна
-pygame.init()
-pygame.mixer.init ()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-
-if getattr(sys, 'frozen', False):
-    # Если программа запущена как исполняемый файл
-    base_path = sys._MEIPASS
-else:
-    # Если программа запущена обычным образом через интерпретатор Python
-    base_path = os.path.dirname(__file__)
-
-# clash_sound = pygame.mixer.Sound("sound/clash3.mp3")
-# game_over_sound = pygame.mixer.Sound("sound/game-lost.mp3")
-# game_won_sound = pygame.mixer.Sound("sound/game-won.mp3")
-
-data_file_path = os.path.join(base_path, "clash2.mp3")
-clash_sound = pygame.mixer.Sound(data_file_path)
-data_file_path = os.path.join(base_path, "game-won.mp3")
-game_won_sound = pygame.mixer.Sound(data_file_path)
-data_file_path = os.path.join(base_path, "game-lost.mp3")
-game_over_sound = pygame.mixer.Sound(data_file_path)
-
-# icon = pygame.image.load("tir-game-icon.png")
-data_file_path = os.path.join(base_path, "tir-game-icon.png")
-icon = pygame.image.load(data_file_path)
-pygame.display.set_icon(icon)
-
-pygame.display.set_caption("Игра Тир")
-clock = pygame.time.Clock()
-
-
-def load_image1(name):
-    path = os.path.join('img', name)
-    try:
-        image = pygame.image.load(path).convert_alpha()
-    except pygame.error as e:
-        print(f'Cannot load image: {name}')
-        raise SystemExit(e)
-    return image
+RECORD_FILE = "record.txt"
 
 
 def load_image(path):
@@ -67,10 +28,24 @@ def load_image(path):
     return image
 
 
-# Спрайт мишени
-# mob_image = load_image("img/tir-game-target.png")
-data_file_path = os.path.join(base_path, "tir-game-target.png")
-mob_image = load_image(data_file_path)
+def get_record():
+    try:
+        with open(RECORD_FILE, 'r') as file:
+            first_line = file.readline()
+            record_parts = first_line.split(": ")
+            if record_parts[0] == "Ваш рекорд":
+                return int(record_parts[1])
+    except FileNotFoundError:
+        with open(RECORD_FILE, 'w') as file:
+            file.write("Ваш рекорд: 0\n")
+            return 0
+
+
+def update_record(score):
+    with open(RECORD_FILE, 'w') as file:
+        current_time = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        file.write(f"Ваш рекорд: {score}\n")
+        file.write(f"Установлен: {current_time}\n")
 
 
 def create_mob():
@@ -111,6 +86,39 @@ def update_bullet(bullet):
     if bullet.rect.bottom < 0:
         bullet.kill()
 
+
+# Инициализация pygame и создание окна
+pygame.init()
+pygame.mixer.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+if getattr(sys, 'frozen', False):
+    # Если программа запущена как исполняемый файл
+    base_path = sys._MEIPASS
+else:
+    # Если программа запущена обычным образом через интерпретатор Python
+    # base_path = os.path.dirname(__file__)
+    base_path = ".\\resource"
+
+data_file_path = os.path.join(base_path, "clash2.mp3")
+clash_sound = pygame.mixer.Sound(data_file_path)
+data_file_path = os.path.join(base_path, "game-won.mp3")
+game_won_sound = pygame.mixer.Sound(data_file_path)
+data_file_path = os.path.join(base_path, "game-lost.mp3")
+game_over_sound = pygame.mixer.Sound(data_file_path)
+
+data_file_path = os.path.join(base_path, "tir-game-icon.png")
+icon = pygame.image.load(data_file_path)
+pygame.display.set_icon(icon)
+
+pygame.display.set_caption("Игра Тир")
+clock = pygame.time.Clock()
+
+# Спрайт мишени
+data_file_path = os.path.join(base_path, "tir-game-target.png")
+mob_image = load_image(data_file_path)
+my_record = get_record()
+is_record_possible = True
 
 all_sprites = pygame.sprite.Group()
 mobs = pygame.sprite.Group()
@@ -168,6 +176,11 @@ while running:
         counter += 1
         if counter % 100 == 0:
             game_won_sound.play()
+        elif my_record > 0:
+            if is_record_possible:
+                if counter > my_record:
+                    game_won_sound.play()
+                    is_record_possible = False
         create_mob()
 
     hits = pygame.sprite.spritecollide(player, mobs, False)
@@ -178,7 +191,15 @@ while running:
     all_sprites.draw(screen)
     counter_text = font.render(f"Сбито яблок: {counter}", True, YELLOW)
     screen.blit(counter_text, (10, 10))
+    if counter < my_record:
+        record_text = font.render(f"Ваш рекорд: {my_record}", True, YELLOW)
+    else:
+        record_text = font.render(f"Ваш рекорд: {counter}", True, YELLOW)
+    screen.blit(record_text, (300, 10))
     pygame.display.flip()
+
+if counter > my_record:
+    update_record(counter)
 
 game_over_sound.play()
 time.sleep(2)
